@@ -4,7 +4,18 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 function RootLayoutInner() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="loading" options={{ headerShown: false }} />
+        </Stack>
+      </>
+    );
+  }
 
   return (
     <>

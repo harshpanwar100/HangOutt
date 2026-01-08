@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 interface AuthContextType {
   isAuthenticated: boolean;
   user: { email: string } | null;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
@@ -22,6 +23,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<{ email: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is already logged in (fake persistence)
@@ -30,11 +32,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const storedUser = await AsyncStorage.getItem('user');
         if (storedUser) {
           const userData = JSON.parse(storedUser);
-          setUser(userData);
-          setIsAuthenticated(true);
+          if (userData && typeof userData === 'object' && userData.email) {
+            setUser(userData);
+            setIsAuthenticated(true);
+          }
         }
       } catch (error) {
         console.error('Error checking stored user:', error);
+        // Clear corrupted data
+        await AsyncStorage.removeItem('user');
+      } finally {
+        setIsLoading(false);
       }
     };
     checkStoredUser();
@@ -85,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, signup, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, isLoading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
