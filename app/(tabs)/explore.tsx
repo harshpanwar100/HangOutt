@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import MapView, { Callout, Marker } from 'react-native-maps';
+import MapView, { Callout, Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 
 interface MarkerData {
@@ -38,6 +38,7 @@ const markersData: MarkerData[] = [
 export default function ExploreScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   useEffect(() => {
     (async () => {
@@ -50,6 +51,14 @@ export default function ExploreScreen() {
       setLocation(location);
     })();
   }, []);
+
+  const handleRegionChange = (region: Region) => {
+    // Calculate zoom level based on latitude delta
+    // Smaller delta = more zoomed in
+    const zoom = Math.log2(360 / region.latitudeDelta);
+    const normalizedZoom = Math.max(0.5, Math.min(1, zoom / 15));
+    setZoomLevel(normalizedZoom);
+  };
 
   if (errorMsg) {
     return (
@@ -81,15 +90,18 @@ export default function ExploreScreen() {
           longitudeDelta: 0.02,
         }}
         showsUserLocation={true}
-        showsMyLocationButton={true}>
+        showsMyLocationButton={true}
+        onRegionChangeComplete={handleRegionChange}>
         {markersData.map((marker) => (
           <Marker
             key={marker.id}
             coordinate={{
               latitude: marker.latitude,
               longitude: marker.longitude,
-            }}>
-            <View style={styles.markerWrapper}>
+            }}
+            anchor={{ x: 0.5, y: 1 }}
+            centerOffset={{ x: 0, y: 0 }}>
+            <View style={[styles.markerWrapper, { transform: [{ scale: zoomLevel }] }]}>
               <View style={[styles.markerContainer, { backgroundColor: marker.themeColor }]}>
                 <Text style={styles.markerIcon}>{marker.icon}</Text>
                 <View style={styles.markerContent}>
@@ -99,7 +111,7 @@ export default function ExploreScreen() {
               </View>
               <View style={[styles.markerTriangle, { borderTopColor: marker.themeColor }]} />
             </View>
-            <Callout tooltip>
+            <Callout>
               <View style={styles.calloutContainer}>
                 <Text style={styles.calloutTitle}>{marker.title}</Text>
                 <Text style={styles.calloutDescription}>{marker.description}</Text>
@@ -173,17 +185,10 @@ const styles = StyleSheet.create({
   },
   calloutContainer: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    minWidth: 200,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    borderRadius: 8,
+    padding: 12,
+    minWidth: 150,
+    maxWidth: 250,
   },
   calloutTitle: {
     fontSize: 16,

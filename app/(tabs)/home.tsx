@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'expo-router';
+import { SearchBar } from 'components/SearchBar';
+import { CountBox } from 'components/CountBox';
 
 export default function HomeScreen() {
   const { user, logout } = useAuth();
@@ -48,6 +50,12 @@ export default function HomeScreen() {
 
           <View style={styles.content}>
             <View style={styles.heroSection}>
+              <SearchBar />
+              <View className='flex-row gap-2 mt-3'>
+                <CountBox name="Parties" count="20" logo="people-outline" />
+                <CountBox name="Parties" count="20" logo="people-outline" />
+                <CountBox name="Parties" count="20" logo="people-outline" />
+              </View>
               <Text style={styles.heroTitle}>Your Journey Starts Here</Text>
               <Text style={styles.heroSubtitle}>
                 This is your personalized dashboard. Explore the features and make the most of your

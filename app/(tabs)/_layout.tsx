@@ -1,7 +1,5 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
-import { Image } from 'react-native';
-import HomeIcon from '../../assets/home.png';
 export default function TabsLayout() {
   return (
     <Tabs screenOptions={{ headerShown: false, tabBarShowLabel: false }}>
@@ -9,7 +7,7 @@ export default function TabsLayout() {
         name="home"
         options={{
           tabBarIcon: ({ focused, color, size }) => (
-            <Image source={HomeIcon} style={{ width: size, height: size }} resizeMode='contain' />
+            <Ionicons name={focused ? 'home' : 'home-outline'} color={color} size={24} />
           ),
         }}
       />
