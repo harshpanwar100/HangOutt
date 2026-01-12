@@ -1,15 +1,28 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'expo-router';
+import { supabase } from 'utils/supabase';
+import { Session } from '@supabase/supabase-js';
 
 export default function ProfileScreen() {
-  const { user } = useAuth();
+  const [session, setSession] = useState<Session | null>(null);
   const router = useRouter();
 
-  const handleLogout = () => {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       {
         text: 'Cancel',
@@ -17,7 +30,8 @@ export default function ProfileScreen() {
       },
       {
         text: 'Logout',
-        onPress: () => {
+        onPress: async () => {
+          await supabase.auth.signOut();
           router.replace('/(auth)/login');
         },
         style: 'destructive',
@@ -33,9 +47,11 @@ export default function ProfileScreen() {
           <View style={styles.header}>
             <View style={styles.profileSection}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase() || 'U'}</Text>
+                <Text style={styles.avatarText}>
+                  {session?.user?.email?.charAt(0).toUpperCase() || 'U'}
+                </Text>
               </View>
-              <Text style={styles.email}>{user?.email}</Text>
+              <Text style={styles.email}>{session?.user?.email}</Text>
             </View>
           </View>
 

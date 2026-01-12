@@ -1,17 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { SearchBar } from 'components/SearchBar';
 import { CountBox } from 'components/CountBox';
+import { supabase } from 'utils/supabase';
+import { Session } from '@supabase/supabase-js';
 
 export default function HomeScreen() {
-  const { user, logout } = useAuth();
+  const [session, setSession] = useState<Session | null>(null);
   const router = useRouter();
 
-  const handleLogout = () => {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       {
         text: 'Cancel',
@@ -19,8 +32,8 @@ export default function HomeScreen() {
       },
       {
         text: 'Logout',
-        onPress: () => {
-          logout();
+        onPress: async () => {
+          await supabase.auth.signOut();
           router.replace('/(auth)/login');
         },
         style: 'destructive',
@@ -36,11 +49,13 @@ export default function HomeScreen() {
           <View style={styles.header}>
             <View style={styles.userInfo}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase() || 'U'}</Text>
+                <Text style={styles.avatarText}>
+                  {session?.user?.email?.charAt(0).toUpperCase() || 'U'}
+                </Text>
               </View>
               <View style={styles.userDetails}>
                 <Text style={styles.welcomeText}>Welcome back!</Text>
-                <Text style={styles.userEmail}>{user?.email}</Text>
+                <Text style={styles.userEmail}>{session?.user?.user_metadata.name}</Text>
               </View>
             </View>
             <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
@@ -51,7 +66,7 @@ export default function HomeScreen() {
           <View style={styles.content}>
             <View style={styles.heroSection}>
               <SearchBar />
-              <View className='flex-row gap-2 mt-3'>
+              <View className="mt-3 flex-row gap-2">
                 <CountBox name="Parties" count="20" logo="people-outline" />
                 <CountBox name="Parties" count="20" logo="people-outline" />
                 <CountBox name="Parties" count="20" logo="people-outline" />

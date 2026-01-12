@@ -12,14 +12,13 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'expo-router';
+import { supabase } from '../../utils/supabase';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
   const router = useRouter();
 
   const handleLogin = async () => {
@@ -30,14 +29,15 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      const success = await login(email, password);
-      if (success) {
-        router.replace('/(tabs)/home');
-      } else {
-        Alert.alert('Error', 'Login failed. Please try again.');
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        Alert.alert('login failed', error.message);
+        return;
       }
-    } catch {
+      console.log('logged in user: ', data.user);
+    } catch (err) {
       Alert.alert('Error', 'An unexpected error occurred');
+      console.log(err);
     } finally {
       setIsLoading(false);
     }

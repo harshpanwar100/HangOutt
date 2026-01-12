@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'expo-router';
+import { supabase } from 'utils/supabase';
 
 export default function SignUpScreen() {
   const [name, setName] = useState('');
@@ -21,7 +21,6 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signup } = useAuth();
   const router = useRouter();
 
   const handleSignup = async () => {
@@ -42,13 +41,13 @@ export default function SignUpScreen() {
 
     setIsLoading(true);
     try {
-      const success = await signup(email, password, name);
-      if (success) {
-        router.replace('/(tabs)/home');
-      } else {
-        Alert.alert('Error', 'Signup failed. Please try again.');
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name: name } } });
+      if (error) {
+        console.log(error.message);
+        return;
       }
-    } catch {
+      console.log('user created: ', data.user);
+    } catch (err) {
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
