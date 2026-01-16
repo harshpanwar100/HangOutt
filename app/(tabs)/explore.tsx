@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import MapView, { Callout, Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
+import AddEventForm, { PlusButton } from '../../components/AddEvent';
 
 interface MarkerData {
   id: number;
@@ -39,6 +40,11 @@ export default function ExploreScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [isAddEventVisible, setIsAddEventVisible] = useState(false);
+
+  const handleAddEvent = (event: { name: string; description: string; timing: string }) => {
+    console.log('New event:', event);
+  };
 
   useEffect(() => {
     (async () => {
@@ -84,8 +90,8 @@ export default function ExploreScreen() {
       <MapView
         style={styles.map}
         initialRegion={{
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
+          latitude: location?.coords.latitude || 28.58004423558824,
+          longitude: location?.coords.longitude || 77.18926461476855,
           latitudeDelta: 0.02,
           longitudeDelta: 0.02,
         }}
@@ -121,6 +127,12 @@ export default function ExploreScreen() {
           </Marker>
         ))}
       </MapView>
+      <PlusButton onPress={() => setIsAddEventVisible(true)} />
+      <AddEventForm
+        visible={isAddEventVisible}
+        onClose={() => setIsAddEventVisible(false)}
+        onSubmit={handleAddEvent}
+      />
     </View>
   );
 }
