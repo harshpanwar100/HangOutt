@@ -131,7 +131,8 @@ export default function ExploreScreen() {
       <AddEventForm
         visible={isAddEventVisible}
         onClose={() => setIsAddEventVisible(false)}
-        onSubmit={handleAddEvent}
+        latitude={location.coords.latitude}
+        longitude={location.coords.longitude}
       />
     </View>
   );

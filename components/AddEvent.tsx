@@ -1,4 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { supabase } from 'utils/supabase';
+import { createEvent } from 'services/eventServices';
 import {
   View,
   Text,
@@ -10,19 +12,14 @@ import {
   Dimensions,
   Keyboard,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
+const { width } = Dimensions.get('window');
 
-const { height } = Dimensions.get('window');
-
-interface AddEventFormProps {
-  visible: boolean;
-  onClose: () => void;
-  onSubmit: (event: { name: string; description: string; timing: string }) => void;
-}
-
-export default function AddEventForm({ visible, onClose, onSubmit }: AddEventFormProps) {
+export default function AddEventForm({ visible, onClose, latitude, longitude }) {
   const [eventName, setEventName] = useState('');
   const [description, setDescription] = useState('');
   const [timing, setTiming] = useState('');
@@ -30,17 +27,17 @@ export default function AddEventForm({ visible, onClose, onSubmit }: AddEventFor
   const animation = useRef(new Animated.Value(0)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
       Animated.parallel([
         Animated.timing(animation, {
           toValue: 1,
-          duration: 400,
+          duration: 300,
           useNativeDriver: true,
         }),
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 300,
+          duration: 200,
           useNativeDriver: true,
         }),
       ]).start();
@@ -48,31 +45,53 @@ export default function AddEventForm({ visible, onClose, onSubmit }: AddEventFor
       Animated.parallel([
         Animated.timing(animation, {
           toValue: 0,
-          duration: 300,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(backdropOpacity, {
           toValue: 0,
-          duration: 300,
+          duration: 200,
           useNativeDriver: true,
         }),
       ]).start();
     }
   }, [visible]);
 
-  const handleSubmit = () => {
-    if (eventName.trim() && description.trim() && timing.trim()) {
-      onSubmit({ name: eventName, description, timing });
-      setEventName('');
-      setDescription('');
-      setTiming('');
+  const handleSubmit = async () => {
+    if (!eventName.trim() || !description.trim() || !timing.trim()) return;
+
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.log("user not authenticated");
+        return;
+      }
+
+      await createEvent({
+        title: eventName,
+        description,
+        timing,
+        latitude,
+        longitude,
+        userId: user.id,
+      })
+
+      setEventName('')
+      setDescription('')
+      setTiming('')
       onClose();
+    } catch (err) {
+      console.log("create Event failed : ", err.message);
     }
   };
 
-  const translateY = animation.interpolate({
+  const scale = animation.interpolate({
     inputRange: [0, 1],
-    outputRange: [height, 0],
+    outputRange: [0.8, 1],
   });
 
   return (
@@ -83,88 +102,102 @@ export default function AddEventForm({ visible, onClose, onSubmit }: AddEventFor
             <TouchableOpacity style={styles.backdropTouchable} onPress={onClose} />
           </Animated.View>
 
-          <Animated.View style={[styles.container, { transform: [{ translateY }] }]}>
-            <LinearGradient
-              colors={['#2D2D2D', '#1A1A1A']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.gradientContainer}>
-              <View style={styles.handle} />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            style={styles.keyboardAvoidingView}
+            pointerEvents="box-none">
+            <Animated.View
+              style={[
+                styles.container,
+                {
+                  transform: [{ scale }],
+                  opacity: animation,
+                },
+              ]}>
+              <LinearGradient
+                colors={['#2D2D2D', '#1A1A1A']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gradientContainer}>
+                <View style={styles.header}>
+                  <Text style={styles.title}>Create Event</Text>
+                  <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                    <Ionicons name="close" size={24} color="#888" />
+                  </TouchableOpacity>
+                </View>
 
-              <View style={styles.header}>
-                <Text style={styles.title}>Create Event</Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                  <Ionicons name="close" size={24} color="#888" />
+                <View style={styles.form}>
+                  <View style={styles.inputContainer}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={20}
+                      color="#6B6B6B"
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Event Name"
+                      placeholderTextColor="#6B6B6B"
+                      value={eventName}
+                      onChangeText={setEventName}
+                      blurOnSubmit={false}
+                    />
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Ionicons
+                      name="document-text-outline"
+                      size={20}
+                      color="#6B6B6B"
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      style={[styles.input, styles.descriptionInput]}
+                      placeholder="Description"
+                      placeholderTextColor="#6B6B6B"
+                      value={description}
+                      onChangeText={setDescription}
+                      multiline
+                      numberOfLines={3}
+                      blurOnSubmit={false}
+                    />
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Ionicons
+                      name="time-outline"
+                      size={20}
+                      color="#6B6B6B"
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Timing (e.g., 7:00 PM)"
+                      placeholderTextColor="#6B6B6B"
+                      value={timing}
+                      onChangeText={setTiming}
+                      blurOnSubmit={true}
+                    />
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={handleSubmit}
+                  activeOpacity={0.8}>
+                  <LinearGradient
+                    colors={['#6366F1', '#8B5CF6']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.submitGradient}>
+                    <Text style={styles.submitText}>Create Event</Text>
+                    <Ionicons name="arrow-forward" size={20} color="#fff" />
+                  </LinearGradient>
                 </TouchableOpacity>
-              </View>
-
-              <View style={styles.form}>
-                <View style={styles.inputContainer}>
-                  <Ionicons
-                    name="calendar-outline"
-                    size={20}
-                    color="#6B6B6B"
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Event Name"
-                    placeholderTextColor="#6B6B6B"
-                    value={eventName}
-                    onChangeText={setEventName}
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Ionicons
-                    name="document-text-outline"
-                    size={20}
-                    color="#6B6B6B"
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={[styles.input, styles.descriptionInput]}
-                    placeholder="Description"
-                    placeholderTextColor="#6B6B6B"
-                    value={description}
-                    onChangeText={setDescription}
-                    multiline
-                    numberOfLines={3}
-                  />
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Ionicons
-                    name="time-outline"
-                    size={20}
-                    color="#6B6B6B"
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Timing (e.g., 7:00 PM)"
-                    placeholderTextColor="#6B6B6B"
-                    value={timing}
-                    onChangeText={setTiming}
-                  />
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleSubmit}
-                activeOpacity={0.8}>
-                <LinearGradient
-                  colors={['#6366F1', '#8B5CF6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.submitGradient}>
-                  <Text style={styles.submitText}>Create Event</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#fff" />
-                </LinearGradient>
-              </TouchableOpacity>
-            </LinearGradient>
-          </Animated.View>
+              </LinearGradient>
+            </Animated.View>
+          </KeyboardAvoidingView>
         </View>
       </TouchableWithoutFeedback>
     </Modal>
@@ -196,7 +229,15 @@ export function PlusButton({ onPress }: PlusButtonProps) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
   backdrop: {
     position: 'absolute',
@@ -204,36 +245,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   backdropTouchable: {
     flex: 1,
   },
   container: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    width: width * 0.9,
+    maxWidth: 400,
   },
   gradientContainer: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingBottom: 34,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#404040',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 12,
+    borderRadius: 24,
+    padding: 24,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    marginBottom: 20,
   },
   title: {
     fontSize: 24,
@@ -244,15 +272,14 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   form: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    marginBottom: 20,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#363636',
     borderRadius: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     paddingHorizontal: 16,
   },
   inputIcon: {
@@ -260,7 +287,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 14,
     fontSize: 16,
     color: '#fff',
   },
@@ -269,8 +296,6 @@ const styles = StyleSheet.create({
     minHeight: 80,
   },
   submitButton: {
-    marginHorizontal: 24,
-    marginTop: 8,
     borderRadius: 16,
     overflow: 'hidden',
   },
